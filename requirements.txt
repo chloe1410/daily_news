@@ -1,1 +1,4 @@
-!!! PLS SAVE IN-PROGRESS FILES OUTSIDE SUBMISSION FOLDERS
+feedparser
+sumy
+nltk
+requests
