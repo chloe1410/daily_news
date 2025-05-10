@@ -1,4 +1,8 @@
 import feedparser
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import feedparser
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer
@@ -23,19 +27,51 @@ def summarize_text(text, num_sentences=3):
 
 # Lấy nội dung bài viết từ link
 def get_article_content(url):
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    paragraphs = soup.find_all('p')
-    article_text = " ".join([para.get_text() for para in paragraphs])
-    return article_text
+    try:
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        paragraphs = soup.find_all('p')
+        article_text = " ".join([para.get_text() for para in paragraphs])
+        return article_text
+    except:
+        return ""
+
+# Chuẩn bị nội dung email
+email_content = ""
 
 # Lấy tin từ RSS
 for source, url in rss_feeds.items():
-    print(f"\n>>> {source} <<<")
+    email_content += f"\n>>> {source} <<<\n"
     feed = feedparser.parse(url)
-    for entry in feed.entries[:5]:  # lấy 5 bài đầu
-        print(f"- {entry.title}")
-        print(f"  {entry.link}")
-        article_content = get_article_content(entry.link)
-        summarized_content = summarize_text(article_content)
-        print(f"  Tóm tắt: {summarized_content}")
+    for entry in feed.entries[:3]:  # Lấy 3 bài đầu mỗi nguồn
+        article_text = get_article_content(entry.link)
+        if article_text:
+            summary = summarize_text(article_text)
+            # Format theo yêu cầu
+            email_content += f"Tiêu đề: {entry.title}\n"
+            email_content += f"Link: {entry.link}\n"
+            email_content += f"Tóm tắt: {summary}\n\n"
+
+# -------- GỬI EMAIL --------
+sender = "migoi1410@gmail.com"
+receiver = "migoi1410@gmail.com"
+password = "xlmz yrcj meuy gqwr"  # App password
+
+subject = "Tóm tắt tin tức hôm nay"
+body = f"Chào bạn,\n\nDưới đây là các tin nổi bật hôm nay:\n\n{email_content}\nChúc bạn một ngày tốt lành!"
+
+msg = MIMEMultipart()
+msg['From'] = sender
+msg['To'] = receiver
+msg['Subject'] = subject
+msg.attach(MIMEText(body, 'plain'))
+
+try:
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(sender, password)
+    server.sendmail(sender, receiver, msg.as_string())
+    server.quit()
+    print("Email đã được gửi.")
+except Exception as e:
+    print("Lỗi khi gửi email:", e)
