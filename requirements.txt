@@ -2,4 +2,5 @@ feedparser
 beautifulsoup4
 sumy
 nltk
+numpy
 requests
